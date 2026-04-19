@@ -3,6 +3,7 @@ import { Router, type Request } from 'express';
 import { z } from 'zod';
 import { query, execute } from '../db/mysql.js';
 import { asyncHandler, HttpError } from '../utils/http.js';
+import { ensureDemoSessionUser } from '../middlewares/auth.js';
 import { syncSessionMetadata } from '../utils/session.js';
 
 type UserRow = {
@@ -77,9 +78,7 @@ router.post('/login', asyncHandler(async (request, response) => {
 }));
 
 router.get('/me', asyncHandler(async (request, response) => {
-  if (!request.session.user) {
-    throw new HttpError(401, '未登录');
-  }
+  ensureDemoSessionUser(request);
 
   request.session.lastActivityAt = Date.now();
   await saveSession(request);

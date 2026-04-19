@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { HttpError } from '../utils/http.js';
+import { ensureDemoSessionUser } from './auth.js';
 
 export const ADMIN_ROLE = '管理员';
 
@@ -11,6 +12,7 @@ export const requireRoles = (...roles: readonly string[]) => (
   _response: Response,
   next: NextFunction,
 ) => {
+  ensureDemoSessionUser(request);
   const userRole = request.session.user?.role;
 
   if (!userRole) {
