@@ -1,0 +1,36 @@
+{
+  "name": "superev-backend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node ../scripts/run-backend.mjs dev",
+    "build": "tsc -p tsconfig.json",
+    "start": "node ../scripts/run-backend.mjs start",
+    "db:init": "tsx src/scripts/init-db.ts",
+    "db:seed": "tsx src/scripts/seed-runtime.ts",
+    "import:legacy": "tsx src/scripts/import-legacy-json.ts"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "express-mysql-session": "^3.0.3",
+    "express-session": "^1.18.1",
+    "mammoth": "^1.12.0",
+    "multer": "^1.4.5-lts.2",
+    "mysql2": "^3.14.1",
+    "ulid": "^2.4.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^5.0.1",
+    "@types/express-session": "^1.18.1",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.14.0",
+    "classic-level": "^3.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2"
+  }
+}
