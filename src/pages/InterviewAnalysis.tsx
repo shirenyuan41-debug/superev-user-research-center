@@ -3,6 +3,7 @@ import { Card, Button, Tabs } from '@/components/ui';
 import { Upload, FileText, ThumbsUp, ThumbsDown, MessageSquarePlus, BookmarkPlus, Download, ChevronDown, Loader2, Plus, CheckCircle2, Zap, X } from 'lucide-react';
 import { buildSpectrumTrack, normalizeAnalysisResult } from '@/lib/gemini';
 import { buildAiEvaluationSummary, buildAiSuggestionFromFeedback, inferFeedbackIssue } from '@/lib/feedback';
+import { ApiError, buildApiUrl, getConfiguredApiBaseUrl } from '@/lib/api';
 import { globalStore, TODO_DEPARTMENTS, TODO_TYPES } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import Markdown from 'react-markdown';
@@ -720,8 +721,21 @@ export const InterviewAnalysis = () => {
     }
   };
 
-  const getAnalysisErrorMessage = (error: unknown) => {
+  const getAnalysisErrorMessage = (error: unknown, documentId?: string) => {
+    const configuredApiBaseUrl = getConfiguredApiBaseUrl();
+    const analyzeApiUrl = documentId
+      ? buildApiUrl(`/api/documents/${documentId}/analyze`)
+      : buildApiUrl('/api/documents/<document-id>/analyze');
+
     if (error instanceof Error) {
+      if (!import.meta.env.DEV && error instanceof ApiError && error.status === 404) {
+        if (!configuredApiBaseUrl) {
+          return `分析生成当前请求的是 ${analyzeApiUrl}。由于 VITE_API_BASE_URL 为空，前端会默认回退到当前 Vercel 域名下的 /api，所以返回 NOT_FOUND。请在 Vercel 配置 VITE_API_BASE_URL 为正式后端域名，例如 https://api.your-domain.com。`;
+        }
+
+        return `分析生成当前请求的是 ${analyzeApiUrl}，但服务返回了 404。请确认 VITE_API_BASE_URL 指向的后端域名正确，并且后端已暴露 POST /api/documents/:id/analyze。`;
+      }
+
       if (error.message === 'LLM_API_KEY_MISSING') {
         return '当前后端未配置可用的大模型 API Key，系统无法生成真实分析结果。请先在 backend/.env 中补齐 Gemini 或 DeepSeek 的服务端配置后再重试。';
       }
@@ -776,6 +790,14 @@ export const InterviewAnalysis = () => {
         /getaddrinfo/i.test(normalizedMessage) ||
         /fetch failed/i.test(normalizedMessage)
       ) {
+        if (!import.meta.env.DEV) {
+          if (!configuredApiBaseUrl) {
+            return `分析生成缺少 VITE_API_BASE_URL，接口会默认请求 ${analyzeApiUrl}。请在 Vercel 配置正式后端地址，例如 https://api.your-domain.com。`;
+          }
+
+          return `分析生成当前请求的是 ${analyzeApiUrl}，但该地址不可访问。请检查 VITE_API_BASE_URL 是否填写了正确的正式后端域名，并确认后端已允许当前前端域名跨域访问。`;
+        }
+
         return 'Gemini 当前网络连接失败或超时，请检查服务端所在机器到 Google Gemini API 的网络连通性后再重试。';
       }
 
@@ -800,6 +822,7 @@ export const InterviewAnalysis = () => {
 
     setIsAnalyzing(true);
     setAnalysisError('');
+    let analysisDocumentId = selectedDocumentId || '';
 
     try {
       const document = uploadedFile
@@ -810,6 +833,7 @@ export const InterviewAnalysis = () => {
         throw new Error('文档上传失败，请重试');
       }
 
+      analysisDocumentId = document.id;
       const analyzedDocument = await globalStore.analyzeDocument(document.id);
       const result = analyzedDocument.analysisResult ? normalizeAnalysisResult(analyzedDocument.analysisResult, {
         sourceContent: analyzedDocument.content,
@@ -840,7 +864,7 @@ export const InterviewAnalysis = () => {
     } catch (error) {
       console.error(error);
       setAnalysisResult(null);
-      const errorMessage = getAnalysisErrorMessage(error);
+      const errorMessage = getAnalysisErrorMessage(error, analysisDocumentId);
       setAnalysisError(errorMessage);
       alert(errorMessage);
     } finally {
