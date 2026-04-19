@@ -14,9 +14,11 @@ export class ApiError extends Error {
   }
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '');
 
-const buildUrl = (path: string, searchParams?: RequestOptions['searchParams']) => {
+export const getConfiguredApiBaseUrl = () => API_BASE_URL;
+
+export const buildApiUrl = (path: string, searchParams?: RequestOptions['searchParams']) => {
   const url = new URL(`${API_BASE_URL}${path}`, window.location.origin);
 
   Object.entries(searchParams || {}).forEach(([key, value]) => {
@@ -37,7 +39,7 @@ const request = async <T>(path: string, options: RequestOptions = {}) => {
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(buildUrl(path, options.searchParams), {
+  const response = await fetch(buildApiUrl(path, options.searchParams), {
     ...options,
     headers,
     credentials: 'include',

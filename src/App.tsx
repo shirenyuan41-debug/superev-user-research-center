@@ -17,7 +17,7 @@ import { PromptManagement } from './pages/SystemManagement/PromptManagement';
 import { DataIngestion } from './pages/SystemManagement/DataIngestion';
 import { SecurityPrivacy } from './pages/SystemManagement/SecurityPrivacy';
 import { LegacyExport } from './pages/LegacyExport';
-import { ApiError, api } from './lib/api';
+import { ApiError, api, buildApiUrl, getConfiguredApiBaseUrl } from './lib/api';
 import { globalStore } from './lib/store';
 
 const ACTIVITY_TIMEOUT_MS = 12 * 60 * 60 * 1000;
@@ -29,12 +29,30 @@ type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated';
 export default function App() {
   const isLegacyExportMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('page') === 'legacy-export';
   const apiTarget = import.meta.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:3001';
+  const configuredApiBaseUrl = getConfiguredApiBaseUrl();
+  const loginApiUrl = buildApiUrl('/api/auth/login');
   const [authStatus, setAuthStatus] = useState<AuthStatus>('checking');
   const [systemNotice, setSystemNotice] = useState('');
   const [currentPage, setCurrentPage] = useState('首页');
   const lastActivityRef = useRef<number | null>(null);
 
   const getBackendIssueMessage = (error: unknown) => {
+    if (!import.meta.env.DEV && error instanceof ApiError && error.status === 404) {
+      if (!configuredApiBaseUrl) {
+        return `当前前端部署只包含静态页面，接口请求正在访问 ${loginApiUrl}。由于 VITE_API_BASE_URL 为空，浏览器会默认请求当前域名下的 /api，所以在 Vercel 上返回 NOT_FOUND。请在 Vercel 配置 VITE_API_BASE_URL 为正式后端地址，例如 https://api.your-domain.com。`;
+      }
+
+      return `当前登录接口正在访问 ${loginApiUrl}，但服务返回了 404。请确认 VITE_API_BASE_URL 指向的后端域名正确，并且后端已暴露 /api/auth/login。`;
+    }
+
+    if (!import.meta.env.DEV && error instanceof Error && /Failed to fetch|NetworkError|fetch/i.test(error.message)) {
+      if (!configuredApiBaseUrl) {
+        return `当前前端部署缺少 VITE_API_BASE_URL，接口请求会默认回到当前域名 ${window.location.origin}。请在 Vercel 配置正式后端地址，例如 https://api.your-domain.com。`;
+      }
+
+      return `当前登录接口正在访问 ${loginApiUrl}，但该地址不可访问。请检查 VITE_API_BASE_URL 是否填写了正确的正式后端域名，并确认后端已允许当前前端域名跨域访问。`;
+    }
+
     if (error instanceof ApiError && error.status >= 500) {
       return `本地后端当前不可用，前端无法完成登录态恢复。请先确认后端服务已启动，并且 ${apiTarget} 可访问；后端还依赖 MySQL 和 backend/.env。`;
     }

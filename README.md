@@ -309,8 +309,8 @@ npm run build
 当前仓库已经补齐了 Vercel 所需入口：
 
 - `api/index.js` 作为 Vercel Function 入口
-- `backend/src/vercel.ts` 复用 Express app，但不再依赖 `app.listen()`
-- `vercel.json` 负责安装根依赖和 `backend/` 依赖，并输出前端静态资源
+- 当前 Vercel 只部署 frontend，作为普通 Vite 静态站点
+- 后端需要单独部署在可公网访问的服务上，再由前端通过环境变量访问
 
 建议生产环境至少配置：
 
@@ -323,37 +323,39 @@ SESSION_COOKIE_SAME_SITE=none
 SESSION_COOKIE_SECURE=auto
 DOCUMENT_STORAGE_MODE=memory
 DOCUMENT_MAX_FILE_SIZE_MB=10
-VITE_API_BASE_URL=
+VITE_API_BASE_URL=https://api.your-domain.com
 ```
 
 说明：
 
 - `DOCUMENT_STORAGE_MODE=memory` 适合 Vercel，无需依赖本地持久磁盘
 - `SESSION_COOKIE_SAME_SITE=none` + `SESSION_COOKIE_SECURE=auto` 适合 HTTPS 下的生产登录态
-- 如果前后端同域部署，`VITE_API_BASE_URL` 可保持为空，前端直接访问同域 `/api`
-- 如果前后端分域部署，`VITE_API_BASE_URL` 需要改成后端域名，并把前端域名加入 `FRONTEND_ORIGINS`
+- 现在这个前端项目部署到 Vercel 后，不应再把 `VITE_API_BASE_URL` 留空
+- 如果留空，前端会默认访问当前域名下的 `/api`，例如 `https://your-project.vercel.app/api/auth/login`
+- 由于当前 Vercel 项目只托管前端静态资源，这个地址会返回 `NOT_FOUND`
+- 正确做法是把 `VITE_API_BASE_URL` 配成独立后端域名，并把前端域名加入后端的 `FRONTEND_ORIGINS`
 
 ### 当前仓库在 Vercel 的正式 API 地址规则
 
-如果你把当前仓库整体部署到同一个 Vercel 项目：
+如果你把当前仓库作为纯前端项目部署到同一个 Vercel 项目：
 
 - 前端页面地址：`https://your-project.vercel.app`
-- 正式后端 API 地址：`https://your-project.vercel.app/api`
+- 正式后端 API 地址：`https://api.your-domain.com/api`
 
 例如：
 
 ```text
-https://your-project.vercel.app/api/health
-https://your-project.vercel.app/api/auth/login
+https://api.your-domain.com/api/health
+https://api.your-domain.com/api/auth/login
 ```
 
-这种场景下，不需要单独再写一个线上后端域名，前端保持：
+这种场景下，Vercel 前端项目必须配置：
 
 ```bash
-VITE_API_BASE_URL=
+VITE_API_BASE_URL=https://api.your-domain.com
 ```
 
-就可以了。
+前端最终会向这个后端地址发起登录请求。
 
 ## 8. 权限与隐私
 

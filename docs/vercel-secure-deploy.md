@@ -33,23 +33,23 @@
 - `api/index.js`
 - `backend/src/vercel.ts`
 
-如果把整个仓库直接部署到同一个 Vercel 项目：
+如果把当前仓库作为纯前端项目部署到 Vercel：
 
 - 前端页面地址会是：`https://your-project.vercel.app`
-- 正式后端 API 地址会是：`https://your-project.vercel.app/api`
+- 正式后端 API 地址应该是：`https://api.your-domain.com/api`
 
 例如：
 
 ```bash
-https://your-project.vercel.app/api/health
-https://your-project.vercel.app/api/auth/login
+https://api.your-domain.com/api/health
+https://api.your-domain.com/api/auth/login
 ```
 
 这种情况下：
 
-- 前端 `VITE_API_BASE_URL` 保持为空
-- 前端默认请求同域 `/api/...`
-- 不需要额外配置一个独立的线上后端 API 地址
+- 前端必须配置 `VITE_API_BASE_URL=https://api.your-domain.com`
+- 前端会请求独立后端域名，而不是同域 `/api/...`
+- 后端需要把前端正式域名加入 `FRONTEND_ORIGINS`
 
 适合当前项目的后端运行环境：
 
